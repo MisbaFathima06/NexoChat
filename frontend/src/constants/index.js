@@ -1,0 +1,1 @@
+export const THEMES = ["whatsapp-light", "whatsapp-dark"];
