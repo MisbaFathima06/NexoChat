@@ -328,3 +328,5 @@ This project is open source and available under the MIT License.
 ## 🙏 Acknowledgments
 
 Built with modern web technologies and best practices for a scalable, real-time chat application.
+#   N e x o C h a t  
+ 
