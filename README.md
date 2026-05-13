@@ -1,189 +1,124 @@
 # NexoChat
 
-WhatsApp-like full stack real-time chat application built with the MERN stack.
+- **What it is:** WhatsApp-style chat app (one-to-one + groups) with a **MERN** stack (**M**ongoDB, **E**xpress, **R**eact, **N**ode).
+- **Real-time:** **Socket.io** (live messages, typing, online list, call signaling).
+- **Not the same as:** A hosted product like WhatsApp Web — you run **MongoDB** + **backend** + **frontend** on your machine (or a server).
 
-## Overview
+---
 
-NexoChat supports one-to-one chat, group chat, media sharing, and live updates using Socket.io.
-It is designed as a modern chat app with authentication, privacy settings, and message-level features.
+## What this repo contains
 
-## Main Features
+| Path | Role |
+|------|------|
+| `frontend/` | **React** app (**Vite** bundler), **Redux Toolkit** state, **Tailwind** + **DaisyUI** UI |
+| `backend/` | **Express** REST API + **Socket.io** server, **Mongoose** models |
+| `*.md` (root) | Extra docs: API, sockets, setup, academic report, etc. |
+| `package.json` (root) | Convenience scripts to **build** frontend and **start** backend |
 
-### Authentication
-- Signup/Login with email or phone number
-- JWT auth with refresh token
-- Password hashing using bcrypt
-- OTP flow placeholder (email/SMS integration can be added)
+---
 
-### Messaging
-- Real-time one-to-one messaging
-- Read receipts (sent, delivered, read)
-- Typing indicators
-- Last seen and online/offline status
-- Message reactions
-- Message deletion
-- Scheduled messages
-- Disappearing messages
-- Optional AES encryption support
+## Tech (names stay as-is)
 
-### Media and Voice
-- Image upload (with compression)
-- Video, audio, and document sharing
-- Voice message recording and sending
-- Media storage via MongoDB GridFS
+**Frontend**
 
-### Groups
-- Create and manage groups
-- Add/remove members
-- Admin controls
-- Group settings
+- React 18, Vite, React Router
+- Redux Toolkit (auth, chat, groups, theme, calls, notifications)
+- Axios (HTTP to `/api/...`)
+- Socket.io client (parallel to HTTP)
+- Tailwind CSS, DaisyUI, react-hot-toast
 
-### User Experience
-- Contact search
-- Theme system (DaisyUI)
-- In-app notifications and sound alerts
-- Chat export to JSON
-- Auto-reply chatbot rules
+**Backend**
 
-## Tech Stack
-
-### Frontend
-- React 18 + Vite
-- Redux Toolkit
-- Tailwind CSS + DaisyUI
-- React Router
-- Socket.io Client
-- React Hot Toast
-
-### Backend
-- Node.js + Express
+- Node.js, Express
 - MongoDB + Mongoose
-- Socket.io
-- JWT + cookie-based auth
-- bcryptjs
-- node-cron
-- crypto-js
-- sharp
+- Socket.io (same Node process as Express via `http.Server`)
+- JWT access + refresh (cookies supported), bcrypt
+- GridFS / file helpers for media; optional Cloudinary-style env (see `ENV_EXPLANATION.md`)
+- node-cron (scheduled jobs), crypto-js / optional message encryption helpers
 
-## Prerequisites
+---
 
-- Node.js 18 or above
-- MongoDB (local or Atlas)
-- npm
+## End-to-end flow (how a message moves)
 
-## Setup
+1. User opens **Vite** dev URL (default `http://localhost:5173`).
+2. **React** loads; `App.jsx` runs **`checkAuth`** → hits **`GET /api/auth/check`** (cookie / token).
+3. If logged in, **`connectSocket(userId)`** opens a **WebSocket** to the backend **Socket.io** server.
+4. Sending a message: **Redux** / components call **`POST /api/messages/...`** → **Express** saves to **MongoDB** → server may **`emit('newMessage', ...)`** so both sides update without full page reload.
+5. Sidebar refreshes user order / unread when **`newMessage`** fires (see `App.jsx`).
 
-### 1) Clone repository
-```bash
-git clone <your-repo-url>
-cd NexoChat
-```
+**Groups:** same idea, but routes under `/api/groups` and socket rooms (`joinGroup` / `leaveGroup` — see `SOCKET_EVENTS.md`).
 
-### 2) Install dependencies
+---
+
+## Local setup (short)
+
+**Prerequisites**
+
+- Node.js 18+
+- MongoDB running (local URI or Atlas)
+
+**Install**
+
 ```bash
 npm install
 npm install --prefix backend
 npm install --prefix frontend
 ```
 
-### 3) Create backend env file
-Create `backend/.env`:
+**Backend env:** create `backend/.env` (see `ENV_EXPLANATION.md` / `QUICK_START.md` for full list). Minimum idea:
 
-```env
-PORT=5001
-NODE_ENV=development
-CLIENT_URL=http://localhost:5173
+- `PORT`, `CLIENT_URL`, `MONGODB_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `ENCRYPTION_KEY`
 
-MONGODB_URI=mongodb://localhost:27017/chat-app
+**Run (two terminals)**
 
-JWT_SECRET=your-jwt-secret
-JWT_REFRESH_SECRET=your-refresh-secret
-ENCRYPTION_KEY=your-encryption-key
-```
-
-### 4) Run app in development
-Terminal 1:
 ```bash
-cd backend
-npm run dev
+cd backend && npm run dev
 ```
 
-Terminal 2:
 ```bash
-cd frontend
-npm run dev
+cd frontend && npm run dev
 ```
 
-Frontend: `http://localhost:5173`  
-Backend API: `http://localhost:5001`
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:5001` (or your `PORT`)
 
-## API Summary
+**Production-ish build (root)**
 
-### Auth
-- `POST /api/auth/send-otp`
-- `POST /api/auth/signup`
-- `POST /api/auth/login`
-- `POST /api/auth/logout`
-- `POST /api/auth/refresh-token`
-- `GET /api/auth/check`
-- `PUT /api/auth/update-profile`
-- `PUT /api/auth/update-privacy`
-- `PUT /api/auth/update-auto-reply`
+```bash
+npm run build
+npm start
+```
 
-### Messages
-- `GET /api/messages/users?search=`
-- `GET /api/messages/chat/:id?page=`
-- `GET /api/messages/group/:groupId?page=`
-- `POST /api/messages/send/:id`
-- `POST /api/messages/send-group/:groupId`
-- `PUT /api/messages/read`
-- `POST /api/messages/reaction/:messageId`
-- `DELETE /api/messages/reaction/:messageId`
-- `DELETE /api/messages/:messageId`
-- `GET /api/messages/export/:id`
-- `GET /api/messages/export-group/:groupId`
+---
 
-### Groups
-- `POST /api/groups`
-- `GET /api/groups`
-- `GET /api/groups/:groupId`
-- `PUT /api/groups/:groupId`
-- `POST /api/groups/:groupId/members`
-- `DELETE /api/groups/:groupId/members/:memberId`
-- `POST /api/groups/:groupId/leave`
-- `POST /api/groups/:groupId/admin/:memberId`
+## Main API areas (detail in `API_DOCUMENTATION.md`)
 
-## Socket Events
+- **`/api/auth`** — signup, login, logout, refresh, profile, privacy, auto-reply
+- **`/api/messages`** — users list, chat history, send, read receipts, reactions, delete, export
+- **`/api/groups`** — CRUD groups, members, admins, leave
+- **`/api/files`** — uploads tied to GridFS / file pipeline
 
-### Client -> Server
-- `typing`
-- `joinGroup`
-- `leaveGroup`
-- `messageDelivered`
-- `messageRead`
+---
 
-### Server -> Client
-- `getOnlineUsers`
-- `newMessage`
-- `messageDelivered`
-- `messagesRead`
-- `messageReaction`
-- `messageDeleted`
-- `typing`
+## Sockets (detail in `SOCKET_EVENTS.md`)
 
-## Important Notes
+- Client → server: typing, join/leave group, delivered/read acks
+- Server → client: online users, new message, reactions, deletes, typing, call-related events (used with **WebRTC** UI)
 
-- OTP is currently placeholder logic.
-- WebRTC voice/video calling is optional and not implemented yet.
-- Push notifications (PWA) are not implemented yet.
-- For production, use strong secrets and secure key management.
+---
 
-## Documentation
+## What is “done” vs “depends on you”
 
-- `API_DOCUMENTATION.md`
-- `SOCKET_EVENTS.md`
-- `IMPLEMENTATION_SUMMARY.md`
-- `RUN_INSTRUCTIONS.md`
+| Area | Status |
+|------|--------|
+| Auth (JWT, bcrypt, refresh) | Implemented |
+| Email OTP signup | Works if **SMTP** / mail env is set (`emailService.js`); dev may expose OTP in JSON for testing |
+| Real-time chat, groups, media, reactions, privacy toggles | Implemented (see `IMPLEMENTATION_SUMMARY.md`) |
+| Voice/video (**WebRTC**) | **Code exists** (`CallManager.jsx`, socket handlers) — quality depends on network/STUN; treat as **advanced / beta** |
+| Mobile push (FCM etc.) | Not in scope of this repo |
+| Production hardening | You must set strong secrets, HTTPS, correct `CLIENT_URL`, rate limits, etc. |
+
+---
 
 ## License
 
